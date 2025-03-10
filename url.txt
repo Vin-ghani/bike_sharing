@@ -1,1 +1,1 @@
-httpsbikesharing-whjnae5vhqxunjfcdxcygp.streamlit.app
+bikesharing-whjnae5vhqxunjfcdxcygp.streamlit.app
