@@ -5,7 +5,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 
 # Load Data
-data = pd.read_csv('main_data.csv')
+data = pd.read_csv('dashboard/main_data.csv')
 
 data['dteday'] = pd.to_datetime(data['dteday'])
 
