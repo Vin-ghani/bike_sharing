@@ -7,100 +7,98 @@ import matplotlib.pyplot as plt
 # Load Data
 data = pd.read_csv('dashboard/main_data.csv')
 
+data['dteday'] = pd.to_datetime(data['dteday'])
+
+def filter_data(data, selected_weathersit, selected_date):
+    start_date, end_date = selected_date if isinstance(selected_date, tuple) else (selected_date, selected_date)
+    return data[(data['weathersit'].isin(selected_weathersit)) &
+                (data['dteday'].between(pd.to_datetime(start_date), pd.to_datetime(end_date)))]
+
 # Judul Dashboard
 st.title('Bike Sharing Data Dashboard')
 
-# Sidebar  
-# Sidebar untuk Filtering
+# Sidebar Filter
 st.sidebar.header("Filter Data")
-selected_season = st.sidebar.multiselect("Pilih Musim:", data['season'].unique(), default=data['season'].unique())
 selected_weathersit = st.sidebar.multiselect("Pilih Kondisi Cuaca:", data['weathersit'].unique(), default=data['weathersit'].unique())
-selected_date = st.sidebar.date_input("Pilih Rentang Tanggal", [pd.to_datetime(data['dteday']).min(), pd.to_datetime(data['dteday']).max()])
+selected_date = st.sidebar.date_input("Pilih Rentang Tanggal", [data['dteday'].min(), data['dteday'].max()])
 
-# Filter Data
-# Konversi dteday ke datetime
-data['dteday'] = pd.to_datetime(data['dteday'])
+filtered_data = filter_data(data, selected_weathersit, selected_date)
 
-# Jika user memilih rentang tanggal
-if isinstance(selected_date, tuple):
-    start_date, end_date = selected_date
-else:
-    start_date, end_date = selected_date, selected_date
-
-filtered_data = data[
-    (data['season'].isin(selected_season)) & 
-    (data['weathersit'].isin(selected_weathersit)) & 
-    (data['dteday'].between(pd.to_datetime(start_date), pd.to_datetime(end_date)))
-] 
-# Perbandingan Penyewaan Casual vs Registered
-st.subheader('Perbandingan Penyewaan Casual vs Registered')
-
-# Membuat DataFrame baru untuk visualisasi
+# Perbandingan Rata-rata Penyewaan Casual vs Registered
+st.subheader('Rata-rata Penyewaan Casual vs Registered')
 agg_data = pd.DataFrame({
     'Kategori': ['Casual', 'Registered'],
-    'Jumlah Penyewaan': [filtered_data['casual'].sum(), filtered_data['registered'].sum()]
+    'Rata-rata Penyewaan': [filtered_data['casual'].mean(), filtered_data['registered'].mean()]
 })
 
 fig1, ax1 = plt.subplots(figsize=(10, 5))
-sns.barplot(data=agg_data, x='Kategori', y='Jumlah Penyewaan', palette='coolwarm', ax=ax1)
-ax1.set_title('Perbandingan Penyewaan: Casual vs Registered')
+sns.barplot(data=agg_data, x='Kategori', y='Rata-rata Penyewaan', palette='coolwarm', ax=ax1)
+ax1.set_title('Rata-rata Penyewaan: Casual vs Registered')
 ax1.set_xlabel('Kategori Pengguna')
-ax1.set_ylabel('Jumlah Penyewaan')
+ax1.set_ylabel('Rata-rata Penyewaan')
+ax1.set_ylim(0, None)
 st.pyplot(fig1)
-
-
 
 # Dampak Hari Kerja vs Hari Libur
 st.subheader('Dampak Hari Kerja vs Hari Libur terhadap Penyewaan Sepeda')
-# Konversi nilai 'workingday' menjadi label yang lebih jelas
-data['workingday_label'] = data['workingday'].map({0: 'Hari Libur', 1: 'Hari Kerja'})
+filtered_data['workingday_label'] = filtered_data['workingday'].map({0: 'Hari Libur', 1: 'Hari Kerja'})
+agg_data = filtered_data.groupby('workingday_label')['cnt'].mean().reset_index()
 
-# Agregasi jumlah penyewaan berdasarkan hari kerja vs hari libur
-agg_data = data.groupby('workingday_label')['cnt'].mean().reset_index()
-
-# Bar chart
 fig2, ax2 = plt.subplots(figsize=(10, 5))
-sns.barplot(data=agg_data, x='workingday_label', y='cnt', palette= 'coolwarm', ax=ax2)
-ax2.set_title('Perbandingan Rata-rata Penyewaan: Hari Kerja vs Hari Libur', fontsize=14)
+sns.barplot(data=agg_data, x='workingday_label', y='cnt', palette='coolwarm', ax=ax2)
+ax2.set_title('Perbandingan Rata-rata Penyewaan: Hari Kerja vs Hari Libur')
 ax2.set_xlabel('')
-ax2.set_ylabel('Rata-rata Jumlah Penyewaan', fontsize=12)
+ax2.set_ylabel('Rata-rata Jumlah Penyewaan')
 st.pyplot(fig2)
 
-with st.expander("Penjelasan Grafik Hari Kerja vs Hari Libur"):
-    st.write("""
-    Grafik ini membandingkan jumlah penyewaan sepeda antara **hari kerja**  dan **hari libur** .
-    - **Hari Kerja** menunjukkan jumlah penyewaan yang lebih tinggi karena banyak orang menggunakan sepeda untuk transportasi sehari-hari.
-    - **Hari Libur** menunjukkan penurunan jumlah penyewaan, mungkin karena orang lebih memilih kendaraan pribadi atau tidak menggunakan sepeda.
-    """)
-    
-# Tren Penyewaan per Bulan: Hari Kerja vs Hari Libur
+# Tren Penyewaan per Bulan
 st.subheader('Tren Penyewaan per Bulan: Hari Kerja vs Hari Libur')
-fig3, ax3 = plt.subplots(figsize=(10, 5))
-sns.lineplot(data=data, x='mnth', y='cnt', hue='workingday', marker='o', palette=['blue', 'red'], ax=ax3)
-ax3.set_title("Tren Penyewaan per Bulan: Hari Kerja vs Hari Libur")
-ax3.set_xlabel("Bulan")
-ax3.set_ylabel("Jumlah Penyewaan")
-ax3.set_xticks(range(12))
-ax3.set_xticklabels(["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"])
-st.pyplot(fig3)
 
-# Penjelasan
-with st.expander("Penjelasan Grafik Tren Penyewaan per Bulan: Hari Kerja vs Hari Libur"):
-    st.write("""
-    Grafik ini menunjukkan tren jumlah penyewaan sepeda **per bulan** berdasarkan **hari kerja** dan **hari libur**.
-    - **Hari Kerja** memiliki tren yang lebih stabil dan cenderung lebih tinggi.
-    - **Hari Libur** menunjukkan fluktuasi yang lebih besar, dengan penyewaan yang cenderung lebih rendah.
-    Grafik ini memberikan gambaran tentang bagaimana pola penyewaan sepeda dipengaruhi oleh status hari kerja atau libur.
-    """)
+# Cek apakah ada data setelah difilter
+if not filtered_data.empty:
+    fig3, ax3 = plt.subplots(figsize=(10, 5))
+    
+    sns.lineplot(
+        data=filtered_data, 
+        x='mnth', 
+        y='cnt', 
+        hue='workingday', 
+        marker='o', 
+        palette={0: 'red', 1: 'blue'}, 
+        style='workingday',
+        dashes={0: (2, 2), 1: ''}, 
+        ci=None,  
+        ax=ax3
+    )
+
+    ax3.set_title("Tren Penyewaan per Bulan: Hari Kerja vs Hari Libur")
+    ax3.set_xlabel("Bulan")
+    ax3.set_ylabel("Jumlah Penyewaan")
+    ax3.set_xticks(range(12))
+    ax3.set_xticklabels(["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"])
+    legend_labels = {0: "Hari Libur", 1: "Hari Kerja"}
+    handles, labels = ax3.get_legend_handles_labels()
+    ax3.legend(handles, [legend_labels[int(label)] for label in labels], title="Jenis Hari")
+    st.pyplot(fig3)
+else:
+    st.warning("Tidak ada data yang tersedia untuk rentang tanggal dan kondisi cuaca yang dipilih.")
+
 
 # Manual Grouping (Pengelompokan Penyewaan)
 st.subheader('Distribusi Penyewaan Sepeda Berdasarkan Kelompok Jumlah Penyewaan')
+
+# Buat kategori pengelompokan berdasarkan jumlah penyewaan
+bins = [0, filtered_data['cnt'].quantile(0.33), filtered_data['cnt'].quantile(0.66), filtered_data['cnt'].max()]
+labels = ['Rendah', 'Sedang', 'Tinggi']
+filtered_data['pengelompokan'] = pd.cut(filtered_data['cnt'], bins=bins, labels=labels, include_lowest=True)
+
+# Visualisasi data setelah diproses
 fig4, ax4 = plt.subplots(figsize=(8, 6))
-sns.countplot(data=data, x='pengelompokan', palette='coolwarm', ax=ax4)
-ax4.set_title('Distribusi Penyewaan Sepeda Berdasarkan Kelompok Jumlah Penyewaan')
-ax4.set_xlabel('Kelompok Penyewaan')
-ax4.set_ylabel('Jumlah Penyewaan')
+filtered_data['pengelompokan'].value_counts().plot(kind='pie', autopct='%1.1f%%', colors=sns.color_palette('coolwarm', 3), ax=ax4)
+ax4.set_ylabel('')  
+ax4.set_title('Distribusi Penyewaan Sepeda Berdasarkan Kelompok')
 st.pyplot(fig4)
+
 
 # Penjelasan
 with st.expander("Penjelasan Grafik Distribusi Penyewaan Berdasarkan Kelompok Jumlah Penyewaan"):
@@ -110,5 +108,6 @@ with st.expander("Penjelasan Grafik Distribusi Penyewaan Berdasarkan Kelompok Ju
     - **Sedang**: Penyewaan dengan jumlah moderat, mencerminkan periode dengan permintaan normal.
     - **Tinggi**: Penyewaan dengan jumlah tinggi, mungkin terjadi pada waktu-waktu tertentu seperti liburan atau cuaca cerah.
     """)
+
 
 
