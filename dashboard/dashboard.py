@@ -5,7 +5,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 
 # Load Data
-data = pd.read_csv('dashboard/main_data.csv')
+data = pd.read_csv('main_data.csv')
 
 data['dteday'] = pd.to_datetime(data['dteday'])
 
@@ -84,20 +84,28 @@ else:
     st.warning("Tidak ada data yang tersedia untuk rentang tanggal dan kondisi cuaca yang dipilih.")
 
 
-# Manual Grouping (Pengelompokan Penyewaan)
+# Distribusi Penyewaan Sepeda Berdasarkan Kelompok Jumlah Penyewaan
 st.subheader('Distribusi Penyewaan Sepeda Berdasarkan Kelompok Jumlah Penyewaan')
 
-# Buat kategori pengelompokan berdasarkan jumlah penyewaan
-bins = [0, filtered_data['cnt'].quantile(0.33), filtered_data['cnt'].quantile(0.66), filtered_data['cnt'].max()]
-labels = ['Rendah', 'Sedang', 'Tinggi']
-filtered_data['pengelompokan'] = pd.cut(filtered_data['cnt'], bins=bins, labels=labels, include_lowest=True)
+if not filtered_data.empty:
+    # Buat kategori pengelompokan berdasarkan jumlah penyewaan
+    bins = [0, filtered_data['cnt'].quantile(0.33), filtered_data['cnt'].quantile(0.66), filtered_data['cnt'].max()]
+    labels = ['Rendah', 'Sedang', 'Tinggi']
+    filtered_data['pengelompokan'] = pd.cut(filtered_data['cnt'], bins=bins, labels=labels, include_lowest=True)
+    kategori_counts = filtered_data['pengelompokan'].value_counts().reindex(labels)  
 
-# Visualisasi data setelah diproses
-fig4, ax4 = plt.subplots(figsize=(8, 6))
-filtered_data['pengelompokan'].value_counts().plot(kind='pie', autopct='%1.1f%%', colors=sns.color_palette('coolwarm', 3), ax=ax4)
-ax4.set_ylabel('')  
-ax4.set_title('Distribusi Penyewaan Sepeda Berdasarkan Kelompok')
-st.pyplot(fig4)
+    # Visualisasi 
+    fig, ax = plt.subplots(figsize=(7, 5))
+    colors = sns.color_palette('coolwarm', 3) 
+    ax.bar(kategori_counts.index, kategori_counts.values, color=colors)
+    ax.set_xlabel("Kategori Penyewaan")
+    ax.set_ylabel("Jumlah Penyewaan")
+    ax.set_title("Distribusi Penyewaan Sepeda Berdasarkan Kelompok")
+    st.pyplot(fig)
+
+else:
+    st.warning("Tidak ada data yang tersedia untuk filter yang dipilih.")
+
 
 
 # Penjelasan
